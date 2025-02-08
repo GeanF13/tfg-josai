@@ -1,0 +1,16 @@
+Dudas y sugerencias:
+?-Qué pasa con las tablas que se quedan a medias es decir mitad en una página y la otra mitad en otra? Al unificar todas las páginas esto se soluciona?
+-Al crear el módulo aritmético -> Se podría utilizar una estrategia que unifique lo descriptivo (es decir, por evaluación progresiva hay que hacer ...) y las tablas correspondientes?
+-Cómo tendrá que ser el modulo de decision para identificar si una query es de un tipo u otro (Query Aritmetica, Query Consulta General, cualquier otra query aparte) -> Agente simple?
+-Crear una plantilla (al final del todo) como sugerencia para las siguientes guias docentes.
+-Para las Query Consulta General -> Cuando se pregunte por datos de las tablas de los docentes tipo "cual es el correo de tal profesor?" o algo así, se podría almacenar el contenido de estas tablas y hacer una combinación de estrategias de lo descriptivo (texto en crudo) y estas tablas. Es decir, que de alguna manera si se pregunta por algo que se encuentra en estas tablas, el chatbot sea capaz de utilizar tanto el texto como las tablas para dar una solución más acertada?
+
+*Acerca de los endpoints:
+-"upload-teaching-guide": Tal y como tiene la validación ahora mismo, depende del codigo de asignatura que viene en el nombre del PDF -> Tal vez sería necesario cambiar esa logica y que obtenga el codigo de la asignatura del PDF (de la primera tabla del pdf) y compararlo a ver si existe en la base de datos de mi postgres (tabla asignaturas)
+
+Cambios respecto a la versión pasada:
+
+-No añadir la funcionalidad de cambiar en el texto evaluación continua por evaluación progresiva, debido a que en la nueva guía docente no está ya la evaluación continua.
+
+0OS5HOwnw03H79Gm
+

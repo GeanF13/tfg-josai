@@ -1,0 +1,10 @@
+[theme]
+base = "dark"
+primaryColor = "#3C3940"  # Azul
+backgroundColor = "#F2F2F2"  # Crema suave
+secondaryBackgroundColor = "#1B72BF"  # Azul claro
+textColor = "black"
+font = "sans serif"
+
+[client]
+toolbarMode = "viewer"
