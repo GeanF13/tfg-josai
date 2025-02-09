@@ -44,3 +44,6 @@ var/
 # Archivos y directorios del sistema operativo
 .DS_Store
 Thumbs.db
+
+backend/chroma.log
+backend/chroma_data

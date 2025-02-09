@@ -27,7 +27,12 @@ def upload_teaching_guide(file):
     if response.status_code == 200:
         return response.json()
     else:
-        return {"error": "Error al subir la guía docente."}
+        return {
+            "status_code": response.status_code,
+            "headers": response.headers,
+            "text": response.text,
+            "error": "Error al subir la guía docente."
+        }
 
 
 # Función para enviar consultas al chatbot
