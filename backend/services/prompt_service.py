@@ -38,7 +38,7 @@ class PromptService():
             """
             
             response = self.llm.invoke(prompt)
-            return response.content
+            return response
         except Exception as e:
             raise Exception(f"Error en query_type_a: {str(e)}")
     
@@ -87,6 +87,6 @@ class PromptService():
             """
             
             response = self.llm.invoke(prompt)
-            return response.content
+            return response
         except Exception as e:
             raise Exception(f"Error en query_type_b: {str(e)}")

@@ -27,3 +27,5 @@ instalar ollama: curl -fsSL https://ollama.com/install.sh | sh
 
 ollama pull nomic-embed-text
 ollama pull llama3.2
+
+pip install --upgrade --quiet langgraph langchain-community beautifulsoup4
