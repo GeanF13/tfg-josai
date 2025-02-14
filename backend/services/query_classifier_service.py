@@ -1,11 +1,12 @@
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from models.query_classification import QueryClassification
+import re
 
 class QueryClassifierService:
     def __init__(self):
         self.llm = ChatOllama(
-            model = "llama3.2",
+            model = "deepseek-r1:8b",
             temperature = 0
         )
         self.classification_prompt = ChatPromptTemplate.from_template(
@@ -44,6 +45,21 @@ class QueryClassifierService:
         prompt = self.classification_prompt.invoke({"input": user_query})
         print("EL PROMPT ES: " )
         print(prompt)
-        response = self.llm.with_structured_output(QueryClassification).invoke(prompt)
-        print(response)
-        return response.model_dump().get("category")
+        
+        #response = self.llm.with_structured_output(QueryClassification).invoke(prompt)
+        #print(response)
+        #return response.model_dump().get("category")
+        
+        response_text = self.llm.invoke(prompt).content
+        print("RESPUESTA: ")
+        print(response_text)
+        
+        clean_response = re.sub(r'<think>.*?</think>', '', response_text, flags=re.DOTALL)
+        
+        # Extraemos la categoría usando una expresión regular (se espera que la respuesta contenga A, BP, BG, BE, BT o C)
+        match = re.search(r'\b(A|BP|BG|BE|BT|C)\b', clean_response)
+        if match:
+            return match.group(0)
+        else:
+            # En caso de que no se encuentre la categoría, se devuelve la respuesta completa para análisis
+            return response_text.strip()

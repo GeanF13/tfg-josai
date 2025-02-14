@@ -1,7 +1,8 @@
-from langchain.embeddings import OllamaEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from persistence.supabase_client import SupabaseClient
 from persistence.chromadb_client import ChromaDBClient
 from langchain_ollama import ChatOllama
+from langchain_core.messages import SystemMessage, HumanMessage, RemoveMessage, AIMessage
 from services.utils import from_activities_list_to_string
 
 
@@ -10,39 +11,56 @@ class PromptService():
         self.embeddings = OllamaEmbeddings(model="nomic-embed-text")
         self.supabase_client = SupabaseClient()
         self.llm = ChatOllama(
-            model = "llama3.2",
+            model = "deepseek-r1:8b",
             temperature = 0
         )
         self.chromadb_client = ChromaDBClient()
-    def query_type_a(self, subject_id, user_query):
+    def query_type_a(self, summary, messages, subject_id, user_query_temp):
 
         try:
-            collection = self.chromadb_client.get_collection(subject_id)
+            vstore = self.chromadb_client.get_collection(subject_id)
+            docs = vstore.similarity_search(query=user_query_temp, k=3)
             
-            docs = collection.query(query_texts=[user_query], n_results=3)['documents']
+            print("AQUI ESTA EL VSTORE")
+            print(vstore)
             
             if not docs:
-                return "No se encontraron resultados"
+                return f"Error en query_type_a: {docs}"
             
-            formatted_docs = "\n\n".join(docs[0])
+            formatted_docs = "\n\n".join([doc.page_content for doc in docs])
+            print(docs)
+            print("AQUI ESTAN LOS DOCS FORMATTEADOS")
+            print(formatted_docs)
             
-            prompt = f"""
-            Eres un asistente que responde preguntas sobre la guía docente de una materia.
-            Basándote en la siguiente información, responde la pregunta de manera clara y concisa.
+            if summary:
+                system_message = f"""
+                Eres un asistente que responde preguntas sobre la guía docente de una asignatura de la universidad.
+                
+                Basándote en la siguiente información relevante (obtenida de la guía docente), un resumen de la conversación anterior, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
 
-            Información relevante:
-            {formatted_docs}
+                Información relevante:
+                {formatted_docs}
+                
+                Resumen de la conversación anterior:
+                {summary}
+                """
+            else:
+                system_message = f"""
+                Eres un asistente que responde preguntas sobre la guía docente de una asignatura de la universidad.
+                
+                Basándote en la siguiente información relevante, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
 
-            Pregunta del usuario:
-            {user_query}
-            """
+                Información relevante:
+                {formatted_docs}
+                """
             
+            prompt = [SystemMessage(content=system_message)] + messages
             response = self.llm.invoke(prompt)
             return response
         except Exception as e:
             raise Exception(f"Error en query_type_a: {str(e)}")
     
-    def query_type_b(self, subcategory, subject_id, user_query):
+    def query_type_b(self, subcategory, summary, messages, subject_id, user_query_temp):
         match subcategory:
             case "P":
                 activities = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion progresiva")
@@ -66,26 +84,49 @@ class PromptService():
             raise ValueError("No se ha podido clasificar la pregunta.")
         
         try:
-            collection = self.chromadb_client.get_collection(subject_id)
-            
-            docs = collection.query(query_texts=[user_query], n_results=3)['documents']
+            vstore = self.chromadb_client.get_collection(subject_id)
+            docs = vstore.similarity_search(query=user_query_temp, k=3)
             
             if not docs:
                 return "No se encontraron resultados"
             
             formatted_docs = "\n\n".join(docs[0])
             
-            prompt = f"""
-            Eres un asistente que ayuda a los usuarios a encontrar información sobre la guia docente de una materia y calcula notas con ayuda de datos extras.
             
-            Aqui hay alguna data extra que te puedes ayudar a responder la siguiente pregunta o a calcular lo que necesites: {data_extra}
+            if summary:
+                system_message = f"""
+                Eres un asistente que ayuda a los usuarios a encontrar información sobre la guia docente de una asignatura de la universidad y calcula notas con ayuda de datos extra.
+                
+                Es importante que sepas que la escala de notas es de 0 a 10, por lo que debes tener en cuenta que la nota minima para aprobar la asignatura es 5 y que las actividades tienen un peso y nota mínima diferente.
             
-            La escala de notas es de 0 a 10, debes tener en cuenta que la nota minima para aprobar la materia es 5 y que las actividades tienen un peso y nota minima diferente.
+                Basándote en la siguiente información relevante, alguna data extra, un resumen de la conversación anterior, un historial de chat (que es la continuación del resumen de la conversación) y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
+                
+                Información relevante:
+                {formatted_docs}
+                
+                Data extra:
+                {data_extra}
+                
+                Resumen de la conversación anterior:
+                {summary}
+
+                """
+            else:
+                system_message = f"""
+                Eres un asistente que ayuda a los usuarios a encontrar información sobre la guia docente de una asignatura de la universidad y calcula notas con ayuda de datos extra.
+                
+                Es importante que sepas que la escala de notas es de 0 a 10, por lo que debes tener en cuenta que la nota minima para aprobar la asignatura es 5 y que las actividades tienen un peso y nota mínima diferente.
             
-            Pregunta del usuario:
-            {user_query}
-            """
-            
+                Basándote en la siguiente información relevante, alguna data extra, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
+                
+                Información relevante:
+                {formatted_docs}
+                
+                Data extra:
+                {data_extra}
+ 
+                """
+            prompt = [SystemMessage(content=system_message)] + messages
             response = self.llm.invoke(prompt)
             return response
         except Exception as e:

@@ -1,5 +1,6 @@
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 import re
 from io import BytesIO
 import tempfile
@@ -7,8 +8,8 @@ import tempfile
 class PDFProcessor:
     def __init__(self):
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=800,
-            chunk_overlap=100,
+            chunk_size=1500,
+            chunk_overlap=500,
             length_function=len
         )
     def process_pdf_from_bytes(self, file_bytes: bytes):
@@ -28,7 +29,10 @@ class PDFProcessor:
             cleaned_pages = self.preprocess_pages(pages)
             combined_text = self.__combine_text(cleaned_pages)
         
-            return self.text_splitter.split_text(combined_text)
+            chunks = self.text_splitter.split_text(combined_text)
+            documents = [Document(page_content=chunk, metadata={}) for chunk in chunks]
+                        
+            return documents
         except Exception as e:
             raise Exception(f"Error procesando el archivo PDF: {str(e)}")
 

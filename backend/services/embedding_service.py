@@ -12,11 +12,11 @@ class EmbeddingService:
         
     def __chunks_to_chroma(self, chunks, collection_name):
         try:
-            collection = self.chromadb_client.create_collection(collection_name)
+            vstore = self.chromadb_client.create_collection(collection_name)
             for index, chunk in enumerate(chunks):
-                collection.add(
-                    ids = [f"chunk_{index}"],
-                    documents = [chunk]
+                vstore.add_documents(
+                    documents = [chunk],
+                    ids = [f"chunk_{index}"]
                 )
         except Exception as e:
             raise Exception(f"Error añadiendo chunks a ChromaDB: {str(e)}")

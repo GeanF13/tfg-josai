@@ -1,8 +1,9 @@
 import chromadb
 import os
-from langchain.embeddings import OllamaEmbeddings
 from dotenv import load_dotenv
 from persistence.embedding_wrapper import EmbeddingFunctionWrapper
+from langchain_ollama import OllamaEmbeddings
+from langchain_chroma import Chroma
 
 load_dotenv()
 
@@ -13,36 +14,26 @@ class ChromaDBClient:
         )
         
     def create_collection(self, collection_name: str):
-        """
-
-        Args:
-            collection_name (str): Nombre de la colección
-
-        Returns:
-           Collection: Objeto de la colección creada 
-        """
         try:
             ollama_embeddings = OllamaEmbeddings(model="nomic-embed-text")
-            embedding_function = EmbeddingFunctionWrapper(ollama_embeddings)
-            
-            return self.client.create_collection(
-                name=collection_name,
-                embedding_function=embedding_function
+            vector_store = Chroma(
+                client = self.client,
+                collection_name = collection_name,
+                embedding_function = ollama_embeddings
             )
+            return vector_store
         except Exception as e:
             raise Exception(f"Error creando la collección: {e}")
         
     def get_collection(self, collection_name: str):
-        """
-
-        Args:
-            collection_name (str): Nombre de la colección
-
-        Returns:
-            Collection: Objeto de la colección
-        """
         try:
-            return self.client.get_collection(collection_name)
+            ollama_embeddings = OllamaEmbeddings(model="nomic-embed-text")
+            vector_store = Chroma(
+                client = self.client,
+                collection_name = collection_name,
+                embedding_function = ollama_embeddings
+            )
+            return vector_store
         except Exception as e:
             raise Exception(f"Error obteniendo la collección: {e}")
     

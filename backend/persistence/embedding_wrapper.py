@@ -1,4 +1,4 @@
-from langchain.embeddings import OllamaEmbeddings
+from langchain_ollama import OllamaEmbeddings
 import numpy as np
 
 class EmbeddingFunctionWrapper:
