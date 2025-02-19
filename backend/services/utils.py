@@ -1,4 +1,5 @@
 import re
+from langchain_core.messages import HumanMessage, AIMessage
 
 def get_subject_id(filename):
     """Summary
@@ -35,3 +36,13 @@ def from_activities_list_to_string(activities, assessment_type):
         string += f"Ademas, la fecha en la que se realizará es en la semana {date}" if date != 0 else ""
         string += "\n"
     return string
+
+def get_role(fragment):
+    if fragment.content.startswith("Resumen:"):
+        return "Resumen anterior"
+    elif isinstance(fragment, HumanMessage):
+        return "Humano"
+    elif isinstance(fragment, AIMessage):
+        return "IA"
+    else:
+        return "Desconocido"

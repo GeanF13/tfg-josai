@@ -15,7 +15,7 @@ class PromptService():
             temperature = 0
         )
         self.chromadb_client = ChromaDBClient()
-    def query_type_a(self, summary, messages, subject_id, user_query_temp):
+    def query_type_a(self, old_messages, recent_messages, subject_id, user_query_temp):
 
         try:
             vstore = self.chromadb_client.get_collection(subject_id)
@@ -32,35 +32,28 @@ class PromptService():
             print("AQUI ESTAN LOS DOCS FORMATTEADOS")
             print(formatted_docs)
             
-            if summary:
-                system_message = f"""
-                Eres un asistente que responde preguntas sobre la guía docente de una asignatura de la universidad.
+            system_message = f"""
+            Eres un asistente que responde preguntas sobre la guía docente de una asignatura de la universidad.
                 
-                Basándote en la siguiente información relevante (obtenida de la guía docente), un resumen de la conversación anterior, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
+            Basándote en la siguiente información relevante, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
 
-                Información relevante:
-                {formatted_docs}
-                
-                Resumen de la conversación anterior:
-                {summary}
-                """
-            else:
-                system_message = f"""
-                Eres un asistente que responde preguntas sobre la guía docente de una asignatura de la universidad.
-                
-                Basándote en la siguiente información relevante, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
-
-                Información relevante:
-                {formatted_docs}
-                """
+            Información relevante:
+            {formatted_docs}
+            """
             
-            prompt = [SystemMessage(content=system_message)] + messages
+            if old_messages:
+                chat_history = old_messages + recent_messages
+  
+            else:
+                chat_history = recent_messages
+            
+            prompt = [SystemMessage(content=system_message)] + chat_history
             response = self.llm.invoke(prompt)
             return response
         except Exception as e:
             raise Exception(f"Error en query_type_a: {str(e)}")
     
-    def query_type_b(self, subcategory, summary, messages, subject_id, user_query_temp):
+    def query_type_b(self, subcategory, old_messages, recent_messages, subject_id, user_query_temp):
         match subcategory:
             case "P":
                 activities = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion progresiva")
@@ -92,41 +85,28 @@ class PromptService():
             
             formatted_docs = "\n\n".join(docs[0])
             
+            system_message = f"""
+            Eres un asistente que ayuda a los usuarios a encontrar información sobre la guia docente de una asignatura de la universidad y calcula notas con ayuda de datos extra.
+                
+            Es importante que sepas que la escala de notas es de 0 a 10, por lo que debes tener en cuenta que la nota minima para aprobar la asignatura es 5 y que las actividades tienen un peso y nota mínima diferente.
             
-            if summary:
-                system_message = f"""
-                Eres un asistente que ayuda a los usuarios a encontrar información sobre la guia docente de una asignatura de la universidad y calcula notas con ayuda de datos extra.
+            Basándote en la siguiente información relevante, alguna data extra, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
                 
-                Es importante que sepas que la escala de notas es de 0 a 10, por lo que debes tener en cuenta que la nota minima para aprobar la asignatura es 5 y que las actividades tienen un peso y nota mínima diferente.
-            
-                Basándote en la siguiente información relevante, alguna data extra, un resumen de la conversación anterior, un historial de chat (que es la continuación del resumen de la conversación) y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
+            Información relevante:
+            {formatted_docs}
                 
-                Información relevante:
-                {formatted_docs}
-                
-                Data extra:
-                {data_extra}
-                
-                Resumen de la conversación anterior:
-                {summary}
-
-                """
-            else:
-                system_message = f"""
-                Eres un asistente que ayuda a los usuarios a encontrar información sobre la guia docente de una asignatura de la universidad y calcula notas con ayuda de datos extra.
-                
-                Es importante que sepas que la escala de notas es de 0 a 10, por lo que debes tener en cuenta que la nota minima para aprobar la asignatura es 5 y que las actividades tienen un peso y nota mínima diferente.
-            
-                Basándote en la siguiente información relevante, alguna data extra, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
-                
-                Información relevante:
-                {formatted_docs}
-                
-                Data extra:
-                {data_extra}
+            Data extra:
+            {data_extra}
  
-                """
-            prompt = [SystemMessage(content=system_message)] + messages
+            """
+            
+            if old_messages:
+                chat_history = old_messages + recent_messages
+                
+            else:
+                chat_history = recent_messages
+
+            prompt = [SystemMessage(content=system_message)] + chat_history
             response = self.llm.invoke(prompt)
             return response
         except Exception as e:
