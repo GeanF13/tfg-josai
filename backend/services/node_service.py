@@ -9,7 +9,7 @@ from services.utils import get_role
 
 
 llm = ChatOllama(
-    model = "deepseek-r1:8b",
+    model = "deepseek-r1:14b",
     temperature = 0
 )
 
@@ -38,6 +38,8 @@ def contextualize_query(state: ChatState):
         
         messages = [SystemMessage(content=system_message)] + chat_history
         response = llm.invoke(messages)
+        print("EL RESPONSE DE CONTEXTUALIZE QUERY ES: ")
+        print(response)
         user_query_temp = response.content
     
     else:
@@ -98,6 +100,8 @@ def summarize_recent_messages(state: ChatState):
     
     prompt = [SystemMessage(content=summary_message)]
     response = llm.invoke(prompt)
+    print("EL RESPONSE DE SUMMARIZE RECENT MESSAGES ES: ")
+    print(response)
     
     summary = AIMessage(content="Resumen: " + response.content)
     

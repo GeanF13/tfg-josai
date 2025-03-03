@@ -29,3 +29,5 @@ ollama pull nomic-embed-text
 ollama pull llama3.2
 
 pip install --upgrade --quiet langgraph langchain-community beautifulsoup4
+ollama pull deepseek-r1:14b
+pip install -qU langchain-deepseek

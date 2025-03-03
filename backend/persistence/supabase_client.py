@@ -15,6 +15,10 @@ class SupabaseClient:
         response = self.supabase.table('Subject').select('*').execute()
         return response.data
     
+    def get_subject_name_by_id(self, subject_id):
+        response = self.supabase.table('Subject').select('name').eq('id', subject_id).execute()
+        return response.data[0]['name']
+    
     def add_subject(self, subject_id, subject_name):
         self.supabase.table('Subject').insert([{'id': subject_id, 'name': subject_name}]).execute()
     
