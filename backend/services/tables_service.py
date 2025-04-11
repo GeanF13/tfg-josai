@@ -36,9 +36,9 @@ class TablesService:
     
     def get_subject_id_and_name(self, file_bytes: bytes):
         tables = self.extractor.extract_tables(file_bytes)
-        print("🔍 Tablas extraídas:", tables)
+        print("Tablas extraídas:", tables)
         tables_df = self.__tables_to_df(tables)
-        print("🔍 DataFrames generados:", tables_df)
+        print("DataFrames generados:", tables_df)
         
         if not tables_df or not tables_df[0].shape[0]:  # Si la lista está vacía o el DataFrame está vacío
             raise ValueError("❌ No se encontraron tablas válidas en el PDF.")

@@ -6,11 +6,17 @@ from services.query_classifier_service import QueryClassifierService
 from langgraph.graph import StateGraph, START, END
 from services.prompt_service import PromptService
 from services.utils import get_role
+from langchain_deepseek import ChatDeepSeek
+import os
+#llm = ChatOllama(
+#    model = "deepseek-r1:14b",
+#    temperature = 0
+#)
 
-
-llm = ChatOllama(
-    model = "deepseek-r1:14b",
-    temperature = 0
+llm = ChatDeepSeek(
+    model = "deepseek-reasoner",
+    temperature = 0,
+    api_key=os.getenv('DEEPSEEK_API_KEY')
 )
 
 class ChatState(MessagesState):
@@ -26,9 +32,8 @@ def contextualize_query(state: ChatState):
     old_messages = state.get("old_messages", [])
     
     if len(recent_messages) > 1 :
-        system_message = ("Dado un historial de chat y la última pregunta del usuario, la cual podría hacer referencia al contexto presente en dicho historial,"
-        "formula una pregunta independiente que pueda ser comprendida sin necesidad del historial." 
-        "NO respondas la pregunta, solo reformúlala si es necesario o, en caso contrario, déjala tal como está.")
+        system_message = """Dado un historial de chat y la última pregunta del usuario, la cual podría hacer referencia al contexto presente en dicho historial, formula una pregunta independiente que pueda ser comprendida sin necesidad del historial. 
+        NO respondas la pregunta, solo reformúlala si es necesario o, en caso contrario, déjala tal como está."""
         
         if old_messages:
             chat_history = old_messages + recent_messages
@@ -37,6 +42,8 @@ def contextualize_query(state: ChatState):
             chat_history = recent_messages
         
         messages = [SystemMessage(content=system_message)] + chat_history
+        print("ASI SE VE EL CONTEXTO DEL PRIMER NODO: ")
+        print(messages)
         response = llm.invoke(messages)
         print("EL RESPONSE DE CONTEXTUALIZE QUERY ES: ")
         print(response)
@@ -60,7 +67,7 @@ def generate_response(state: ChatState):
     user_query_temp = state["user_query_temporal"]
     recent_messages = state["recent_messages"]
     old_messages = state.get("old_messages", [])
-    messages_count = state["messages_count"]
+    messages_count = state.get("messages_count", 0)
 
     match category:
         case "A":
@@ -84,26 +91,35 @@ def should_summarize(state: ChatState):
 def summarize_recent_messages(state: ChatState):
     recent_messages = state["recent_messages"]
     
-    fragment1 = recent_messages[0]
-    fragment2 = recent_messages[1]
+    if isinstance(recent_messages[0], SystemMessage):
+        fragment1 = recent_messages[0]
+        fragment2 = recent_messages[1]
+        fragment3 = recent_messages[2]
+        
+        summary_message = f"""Genera un resumen conciso que integre la información clave de los tres fragmentos, manteniendo el contexto y la relevancia de cada uno, sin agregar información nueva ni detalles irrelevantes.
+        A continuación se presentan tres fragmentos de la conversación:
+        Fragmento 1 (Resumen anterior): {fragment1.content}
+        Fragmento 2 (Mensaje Humano): {fragment2.content}
+        Fragmento 3 (Mensaje IA): {fragment3.content}
+        """
+        
+    else:
     
-    role_fragment1 = get_role(fragment1)
-    role_fragment2 = get_role(fragment2)
-
-    summary_message = f"""
-    A continuación se presentan dos fragmentos de la conversación:
-    Fragmento 1 (Tipo: {role_fragment1}): {fragment1.content}
-    Fragmento 2 (Tipo: {role_fragment2}): {fragment2.content}
+        fragment1 = recent_messages[0]
+        fragment2 = recent_messages[1]
     
-    Genera un resumen conciso que integre la información clave de ambos fragmentos, manteniendo el contexto y la relevancia de cada uno, sin agregar información nueva ni detalles irrelevantes.
-    """
+        summary_message = f"""Genera un resumen conciso que integre la información clave de ambos fragmentos, manteniendo el contexto y la relevancia de cada uno, sin agregar información nueva ni detalles irrelevantes.
     
-    prompt = [SystemMessage(content=summary_message)]
-    response = llm.invoke(prompt)
+        A continuación se presentan dos fragmentos de la conversación:
+        Fragmento 1 (Mensaje Humano): {fragment1.content}
+        Fragmento 2 (Mensaje IA): {fragment2.content}
+        """
+    
+    response = llm.invoke(summary_message)
     print("EL RESPONSE DE SUMMARIZE RECENT MESSAGES ES: ")
     print(response)
     
-    summary = AIMessage(content="Resumen: " + response.content)
+    summary = SystemMessage(content="Resumen: " + response.content)
     
     recent_messages = [summary] + recent_messages[2:]
     

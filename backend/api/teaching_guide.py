@@ -32,14 +32,22 @@ async def upload_teaching_guide(guide: UploadFile = File(...)):
     # Process the file
     try:
         table_service.tables_to_postgres(file_bytes)
-        embedding_service = EmbeddingService()
-        embedding_service.process_teaching_guide(file_bytes, subject_id)
+        embedding_service = EmbeddingService(subject_id)
+        embedding_service.process_teaching_guide(file_bytes) 
         #Tables from pdf to PostgreSQL
-        return {"message": "Guía de aprendizaje procesada correctamente", "guia_docente": subject_name, "subject_id": subject_id}
+        return {"message": "Guía de aprendizaje procesada correctamente", "guia_docente": subject_name, "id": subject_id}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+@router.get("/teaching-guides/")
+async def get_teaching_guides():
+    try:
+        supabase_client = SupabaseClient()
+        guides = supabase_client.get_subjects()
+        return guides
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
     
     

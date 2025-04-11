@@ -1,6 +1,10 @@
 import os
 from supabase import create_client, Client
 
+from dotenv import load_dotenv
+load_dotenv()  # Esto carga las variables de entorno desde un archivo .env
+
+
 class SupabaseClient:
     supabase_url: str = os.getenv('SUPABASE_URL')
     supabase_key: str = os.getenv('SUPABASE_KEY')
@@ -39,3 +43,9 @@ class SupabaseClient:
     def delete_subject(self, subject_id):
         self.supabase.table('Subject').delete().eq('id', subject_id).execute()
         
+    def insert_assessment_criteria(self, criteria, subject_id):
+        self.supabase.table('Subject').update({'assessment_criteria': criteria}).eq('id', subject_id).execute()
+
+    def get_assessment_criteria_by_subject_id(self, subject_id):
+        response = self.supabase.table('Subject').select('assessment_criteria').eq('id', subject_id).execute()
+        return response.data[0]['assessment_criteria'] if response.data else None

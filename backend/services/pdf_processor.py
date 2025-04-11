@@ -4,13 +4,23 @@ from langchain_core.documents import Document
 import re
 from io import BytesIO
 import tempfile
+from persistence.supabase_client import SupabaseClient
+from langchain_deepseek import ChatDeepSeek
+import os
 
 class PDFProcessor:
-    def __init__(self):
+    def __init__(self, subject_id: str):
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1500,
             chunk_overlap=500,
             length_function=len
+        )
+        self.subject_id = subject_id
+        self.supabase_client = SupabaseClient()
+        self.llm = ChatDeepSeek(
+            model = "deepseek-reasoner",
+            temperature = 0,
+            api_key=os.getenv('DEEPSEEK_API_KEY')
         )
     def process_pdf_from_bytes(self, file_bytes: bytes):
         if not file_bytes:
@@ -29,13 +39,46 @@ class PDFProcessor:
             cleaned_pages = self.preprocess_pages(pages)
             combined_text = self.__combine_text(cleaned_pages)
         
+            self.__assessment_criteria_process(combined_text)
+            
             chunks = self.text_splitter.split_text(combined_text)
-            documents = [Document(page_content=chunk, metadata={}) for chunk in chunks]
+            documents = [Document(page_content=chunk, metadata={"document_type": "teaching_guide"}) for chunk in chunks]
                         
             return documents
         except Exception as e:
             raise Exception(f"Error procesando el archivo PDF: {str(e)}")
 
+    def __assessment_criteria_process(self, text):
+        section_keyword = "criterios de evaluación"
+        
+        pattern = re.compile(
+            rf"(?si)(?P<section>\d+\.\d+\.*\s+{re.escape(section_keyword)}.*)",
+            re.DOTALL
+        )
+        
+        match = pattern.search(text)
+        if match:
+            criterial_section = match.group("section").strip()
+        else:
+            raise Exception(f"No se encontró la sección '{section_keyword}' en el texto.")
+        
+        try:
+
+            system_message = f"""Extrae el texto completo de la sección llamada "criterios de evaluación".
+            Incluye todas las subsecciones y contenido hasta que comience la siguiente sección principal.
+            
+            Documento:
+            {criterial_section}
+            """
+            
+            response = self.llm.invoke(system_message).content
+            if response:
+                self.supabase_client.insert_assessment_criteria(response, self.subject_id)
+            else:
+                raise Exception("No se obtuvo respuesta del modelo para los criterios de evaluación.")
+        except Exception as e:
+            raise Exception(f"Error procesando los criterios de evaluación: {str(e)}")
+        
     def preprocess_pages(self, pages):
         
         pages = [{'page_number': page['page_number'], 'content': self.__normalize_text(page['content'])} for page in pages]

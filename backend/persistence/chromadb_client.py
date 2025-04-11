@@ -21,6 +21,7 @@ class ChromaDBClient:
                 collection_name = collection_name,
                 embedding_function = ollama_embeddings
             )
+            vector_store.get
             return vector_store
         except Exception as e:
             raise Exception(f"Error creando la collección: {e}")

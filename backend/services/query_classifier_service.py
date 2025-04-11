@@ -2,12 +2,18 @@ from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from models.query_classification import QueryClassification
 import re
-
+from langchain_deepseek import ChatDeepSeek
+import os
 class QueryClassifierService:
     def __init__(self):
-        self.llm = ChatOllama(
-            model = "deepseek-r1:14b",
-            temperature = 0
+        #self.llm = ChatOllama(
+        #   model = "deepseek-r1:14b",
+        #    temperature = 0
+        #)
+        self.llm = ChatDeepSeek(
+            model = "deepseek-reasoner",
+            temperature = 0,
+            api_key=os.getenv('DEEPSEEK_API_KEY')
         )
         self.classification_prompt = ChatPromptTemplate.from_template(
             """
