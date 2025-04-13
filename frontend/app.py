@@ -5,6 +5,10 @@ import json
 import time
 from typing import Dict, List
 import pandas as pd
+import base64
+from PIL import Image
+import io
+import os
 
 # URL base de tu API (ajusta según tu configuración)
 API_BASE_URL = "http://localhost:8000"
@@ -20,6 +24,29 @@ st.set_page_config(
         'About': 'This is a chatbot that helps you with the subjects of the ETSISI'
     }
 )
+
+# Función para convertir imagen a base64
+def get_image_base64(image_path):
+    if not os.path.isfile(image_path):
+        return None
+    
+    img = Image.open(image_path)
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
+
+# Rutas a tus imágenes de avatar
+ai_avatar_path = "assets/ai_icon.png"
+user_avatar_path = "assets/user_icon.png"
+
+# Convertir imágenes a formato base64
+ai_avatar_base64 = get_image_base64(ai_avatar_path)
+user_avatar_base64 = get_image_base64(user_avatar_path)
+
+# Crear las URLs de datos
+ai_avatar = f"data:image/png;base64,{ai_avatar_base64}" if ai_avatar_base64 else None
+user_avatar = f"data:image/png;base64,{user_avatar_base64}" if user_avatar_base64 else None
+
 
 # Función para cargar una guía docente
 def upload_teaching_guide(file):
@@ -101,7 +128,7 @@ if 'guides' not in st.session_state:
     st.session_state.guides = get_all_teaching_guides()
 
 # Título principal
-st.title("Asistente de Guías Docentes")
+st.title("🤖 JosAI - Asistente de Guías Docentes")
 
 # Sidebar para subir guías y seleccionarlas
 with st.sidebar:
@@ -175,6 +202,12 @@ with st.sidebar:
         
     else:
         st.info("No hay guías docentes disponibles. Sube una para comenzar.")
+    
+        
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    
+    logo_path = "assets/logo_etsisi.png"
+    st.image(logo_path, width=150, use_container_width=False)
 
 # Área principal de chat
 if st.session_state.selected_guide:
@@ -183,18 +216,19 @@ if st.session_state.selected_guide:
     
     # Mostrar mensajes anteriores
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
+        avatar = ai_avatar if message["role"] == "assistant" else user_avatar
+        with st.chat_message(message["role"], avatar=avatar):
             st.markdown(message["content"])
     
     # Input para nuevo mensaje
     if prompt := st.chat_input("Escribe tu pregunta sobre la guía docente..."):
         # Mostrar el mensaje del usuario
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar=user_avatar):
             st.markdown(prompt)
         
         # Enviar mensaje al backend y mostrar respuesta
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar=ai_avatar):
             with st.spinner("Pensando..."):
                 response_data = send_chat_message(
                     st.session_state.selected_guide, 
@@ -216,3 +250,4 @@ if st.session_state.selected_guide:
 else:
     # Si no hay guía seleccionada
     st.info("Selecciona una guía docente en el panel lateral para comenzar a chatear.")
+    

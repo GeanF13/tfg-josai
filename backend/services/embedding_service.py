@@ -23,20 +23,15 @@ class EmbeddingService:
         Se asume que los IDs tienen el formato "chunk_<n>".
         Retorna -1 si no se encuentran chunks.
         """
-        vstore = self.chromadb_client.create_collection(self.collection_name)
+        vstore = self.chromadb_client.get_collection(self.collection_name)
         result = vstore.get(include=[])
-        # El resultado generalmente viene en una lista anidada: [["chunk_0", "chunk_1", ...]]
-        ids_list = result.get("ids", [[]])
         last_number = -1
-        if ids_list and ids_list[0]:
-            for doc_id in ids_list[0]:
-                if doc_id.startswith("chunk_"):
-                    try:
-                        n = int(doc_id.split("_")[1])
-                        if n > last_number:
-                            last_number = n
-                    except ValueError:
-                        continue
+        ids = result.get("ids", [])
+        if not ids:
+            last_number = -1
+        else:
+            chunk_numbers = [int(chunk_id.split("_")[1]) for chunk_id in ids if chunk_id.startswith("chunk_")]
+            last_number = max(chunk_numbers) if chunk_numbers else -1
         return last_number
 
     def __chunks_to_chroma(self, chunks: list[Document]):

@@ -25,7 +25,7 @@ class PromptService():
 
         try:
             vstore = self.chromadb_client.get_collection(subject_id)
-            docs = vstore.similarity_search(query=user_query_temp, k=3, filter={"document_type": "teaching_guide"})
+            docs = vstore.similarity_search(query=user_query_temp, k=6, filter={"document_type": "teaching_guide"})
             faq = vstore.similarity_search(query=user_query_temp, k=3, filter={"document_type": "faq"})
             
             print("AQUI ESTA EL VSTORE")
@@ -45,7 +45,13 @@ class PromptService():
                 
                 Basándote en la siguiente información relevante, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
                 
-                Información relevante:
+                -- RESTRICCIONES --
+                
+                1. No añadas información externa ni supongas datos no explícitos.
+                2. No comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones que la información proviene de la sección INFORMACIÓN RELEVANTE.
+                
+                -- INFORMACIÓN RELEVANTE --
+                
                 {formatted_docs}
                 """
             
@@ -68,7 +74,12 @@ class PromptService():
                 
                 Basándote en la siguiente información relevante, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
                 
-                Información relevante:
+                -- RESTRICCIONES --
+                
+                1. No añadas información externa ni supongas datos no explícitos.
+                2. No comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones que la información proviene de la sección INFORMACIÓN RELEVANTE o de PREGUNTAS FRECUENTES.
+                
+                -- INFORMACIÓN RELEVANTE --
                 
                 {formatted_docs}
                 
