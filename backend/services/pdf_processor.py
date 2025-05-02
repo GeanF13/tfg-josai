@@ -7,12 +7,23 @@ import tempfile
 from persistence.supabase_client import SupabaseClient
 from langchain_deepseek import ChatDeepSeek
 import os
+from textwrap import dedent
+
+_CODE_FENCE_RE = re.compile(
+    r"""
+    ^\s*```[\w+-]*\s*        # apertura  ``` o ```markdown, ```json, etc.
+    \n?                      # salto opcional
+    (?P<contenido>.*?)       # todo lo de dentro (no codicioso)
+    \n?\s*```?\s*$           # cierre  ``` o ```
+    """,
+    re.DOTALL | re.VERBOSE,
+)
 
 class PDFProcessor:
     def __init__(self, subject_id: str):
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1500,
-            chunk_overlap=500,
+            chunk_size=3000,
+            chunk_overlap=1000,
             length_function=len
         )
         self.subject_id = subject_id
@@ -66,19 +77,41 @@ class PDFProcessor:
 
             system_message = f"""Extrae el texto completo de la sección llamada "criterios de evaluación".
             Incluye todas las subsecciones y contenido hasta que comience la siguiente sección principal.
+            NO incluyas el título de la sección ni ningún apunte o comentario adicional.
+            **No envuelvas la respuesta en fences de código (` ``` `) ni indiques el lenguaje.**
+            Devuelve SOLO Markdown plano.
             
             Documento:
             {criterial_section}
             """
             
             response = self.llm.invoke(system_message).content
-            if response:
+            response_clean = self.__strip_code_fences(response)
+            
+            if response_clean:
                 self.supabase_client.insert_assessment_criteria(response, self.subject_id)
             else:
                 raise Exception("No se obtuvo respuesta del modelo para los criterios de evaluación.")
         except Exception as e:
             raise Exception(f"Error procesando los criterios de evaluación: {str(e)}")
         
+    def __strip_code_fences(self, text):
+        """
+        Si el string está envuelto en un bloque de código, lo quita.
+        Además elimina cualquier fence suelto que pueda quedar.
+        """
+        text = text.strip()
+
+        # 1) bloque completo (apertura-cierre)
+        m = _CODE_FENCE_RE.match(text)
+        if m:
+            text = m.group("contenido")
+
+        # 2) por si quedaran líneas ``` desperdigadas
+        text = re.sub(r"^\s*```[\w+-]*\s*$", "", text, flags=re.MULTILINE)
+
+        return dedent(text).strip()
+    
     def preprocess_pages(self, pages):
         
         pages = [{'page_number': page['page_number'], 'content': self.__normalize_text(page['content'])} for page in pages]

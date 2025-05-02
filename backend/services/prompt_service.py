@@ -24,35 +24,62 @@ class PromptService():
     def query_type_a(self, old_messages, recent_messages, subject_id, user_query_temp):
 
         try:
+            activities_p = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion progresiva")
+            print("ACTIVITIES P")
+            print(activities_p)
+            activities_g = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion global")
+            activities_e = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion extraordinaria")
+            
+            activities_p = generate_activities(activities_p)
+            activities_g = generate_activities(activities_g)
+            activities_e = generate_activities(activities_e)
+            
+            subject_name = self.supabase_client.get_subject_name_by_id(subject_id)
+            
             vstore = self.chromadb_client.get_collection(subject_id)
-            docs = vstore.similarity_search(query=user_query_temp, k=6, filter={"document_type": "teaching_guide"})
+            docs = vstore.similarity_search(query=user_query_temp, k=8, filter={"document_type": "teaching_guide"})
             faq = vstore.similarity_search(query=user_query_temp, k=3, filter={"document_type": "faq"})
             
-            print("AQUI ESTA EL VSTORE")
-            print(vstore)
-            
             if not docs:
-                return f"Error en query_type_a: {docs}"
+                return f"Error in query_type_a: {docs}"
             
-            formatted_docs = "\n\n".join([doc.page_content for doc in docs])
-            print(docs)
-            print("AQUI ESTAN LOS DOCS FORMATTEADOS")
-            print(formatted_docs)
+            #formatted_docs = "\n\n".join([doc.page_content for doc in docs])
+            
+            formatted_docs = f""
+            for i, doc in enumerate(docs):
+                formatted_docs += f"Fragmento {i+1}:\n{doc.page_content}\n\n"
             
             if not faq:
                 system_message = f"""
-                Eres un asistente que responde preguntas sobre la guía docente de una asignatura de la universidad.
+                Eres JosAI, un asistente que responde preguntas sobre la organización y evaluación de la asignatura **{subject_name}**, impartida en la Escuela Técnica Superior de Ingeniería de Sistemas Informáticos (ETSISI) de la Universidad Politécnica de Madrid (UPM).
                 
-                Basándote en la siguiente información relevante, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
-                
-                -- RESTRICCIONES --
-                
-                1. No añadas información externa ni supongas datos no explícitos.
-                2. No comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones que la información proviene de la sección INFORMACIÓN RELEVANTE.
+                Basándote en la siguiente información relevante (fragmentos de documentos oficiales que pueden ayudarte a responder), la DATA EXTRA (información estructurada sobre los tipos de evaluación de la asignatura), el historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
                 
                 -- INFORMACIÓN RELEVANTE --
                 
                 {formatted_docs}
+                
+                -- DATA EXTRA --
+                
+                EVALUACIÓN PROGRESIVA:
+                {activities_p}
+                
+                EVALUACIÓN GLOBAL:
+                {activities_g}
+                
+                EVALUACIÓN EXTRAORDINARIA:
+                {activities_e}
+                
+                -- RESTRICCIONES --
+                
+                1. Utiliza EXCLUSIVAMENTE la información que se te ha proporcionado explícitamente sin añadir nada más.
+                2. NUNCA añadas información externa ni supongas datos no explícitos.
+                3. NO comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones NUNCA que la información proviene de la sección INFORMACIÓN RELEVANTE o DATA EXTRA (de los fragmentos).
+                4. NO menciones tus pensamientos internos ni notas personales.
+                
+                -- IMPORTANTE --
+                
+                Debes hacer bien tu trabajo o de lo contrario muchos alumnos de la ETSISI podrían verse perjudicados.
                 """
             
             else:
@@ -70,18 +97,24 @@ class PromptService():
                 third_answer_faq = faq_3.split("Respuesta:")[1].strip()
                 
                 system_message = f"""
-                Eres un asistente que responde preguntas sobre la guía docente de una asignatura de la universidad.
+                Eres JosAI, un asistente que responde preguntas sobre la guía docente de una asignatura de la universidad.
                 
-                Basándote en la siguiente información relevante, un historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
-                
-                -- RESTRICCIONES --
-                
-                1. No añadas información externa ni supongas datos no explícitos.
-                2. No comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones que la información proviene de la sección INFORMACIÓN RELEVANTE o de PREGUNTAS FRECUENTES.
+                Basándote en la siguiente información relevante (fragmentos de documentos oficiales que pueden ayudarte a responder), la DATA EXTRA (información estructurada sobre los tipos de evaluación de la asignatura), el historial de chat y la última pregunta del usuario (además de tener en cuenta las Preguntas Frecuentes por si hace falta), responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
                 
                 -- INFORMACIÓN RELEVANTE --
                 
                 {formatted_docs}
+                
+                -- DATA EXTRA --
+                
+                EVALUACIÓN PROGRESIVA:
+                {activities_p}
+                
+                EVALUACIÓN GLOBAL:
+                {activities_g}
+                
+                EVALUACIÓN EXTRAORDINARIA:
+                {activities_e}
                 
                 -- PREGUNTAS FRECUENTES --
                 
@@ -93,47 +126,41 @@ class PromptService():
                 
                 Pregunta 3: {third_question_faq}
                 Respuesta 3: {third_answer_faq}
+                
+                -- RESTRICCIONES --
+                
+                1. Utiliza EXCLUSIVAMENTE la información que se te ha proporcionado explícitamente sin añadir nada más.
+                2. NUNCA añadas información externa ni supongas datos no explícitos.
+                3. NO comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones NUNCA que la información proviene de la sección INFORMACIÓN RELEVANTE, DATA EXTRA (de los fragmentos) o de las PREGUNTAS FRECUENTES.
+                4. NO menciones tus pensamientos internos ni notas personales.
+                
+                -- IMPORTANTE --
+                
+                Debes hacer bien tu trabajo o de lo contrario muchos alumnos de la ETSISI podrían verse perjudicados.
                 """
             
             if old_messages:
-                chat_history = old_messages + recent_messages
+                
+                formatted_old_messages = f"-- Resumen(es) de la conversación anterior más antigua(s) --\nEstán ordenados de más antiguo a más reciente\n\n"
+                for i, old_message in enumerate(old_messages):
+                    old_message_clean = old_message.content.replace("-- Resumen de la conversación anterior más reciente --\n", "")
+                    formatted_old_messages += f"{i+1}. Resumen:{old_message_clean}\n"
+                
+                system_message = f"{system_message}\n\n{formatted_old_messages}"
   
-            else:
-                chat_history = recent_messages
+            chat_history = recent_messages
             
             prompt = [SystemMessage(content=system_message)] + chat_history
+            print("==== EL PROMPT DE QUERY TYPE A ES ====\n")
+            print(prompt)
             response = self.llm.invoke(prompt)
-            print("EL RESPONSE DE QUERY TYPE A ES: ")
+            print("\n=== EL RESPONSE DE QUERY TYPE A ES===\n")
             print(response)
             return response
         except Exception as e:
-            raise Exception(f"Error en query_type_a: {str(e)}")
+            raise Exception(f"Error in query_type_a: {str(e)}")
     
-    def query_type_b(self, subcategory, old_messages, recent_messages, subject_id, user_query_temp):
-        # match subcategory:
-        #     case "P":
-        #         activities = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion progresiva")
-        #         data_extra = from_activities_list_to_string(activities, "evaluación progresiva")
-        #     case "G":
-        #         activities = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion global")
-        #         data_extra = from_activities_list_to_string(activities, "evaluación global")
-        #     case "E":
-        #         activities = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion extraordinaria")
-        #         data_extra = from_activities_list_to_string(activities, "evaluación extraordinaria")
-        #     case "T":
-        #         activities_p = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion progresiva")
-        #         print("ACTIVITIES P")
-        #         print(activities_p)
-        #         activities_g = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion global")
-        #         activities_e = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion extraordinaria")
-        #         # data_extra = from_activities_list_to_string(activities_p, "evaluación progresiva")
-        #         # data_extra += from_activities_list_to_string(activities_g, "evaluación global")
-        #         # data_extra += from_activities_list_to_string(activities_e, "evaluación extraordinaria")
-        #         data_extra = generate_data_extra(activities_p, activities_g, activities_e)
-        #     case _:
-        #         data_extra = None
-        # if data_extra is None:
-        #     raise ValueError("No se ha podido clasificar la pregunta.")
+    def query_type_b(self, old_messages, recent_messages, subject_id, user_query_temp):
         
         activities_p = self.supabase_client.get_activities_by_subject_id_and_assessment(subject_id, "evaluacion progresiva")
         print("ACTIVITIES P")
@@ -164,7 +191,7 @@ class PromptService():
 En este chatbot estamos utilizando un sistema RAG (Retrieval Augmented Generation), lo que significa que combina información recuperada de documentos oficiales, que en este caso son los criterios de evaluación (sección DATA EVALUACIÓN) con datos estructurados (sección DATA EXTRA) para generar respuestas precisas acerca de la organización y evaluación de la asignatura "{subject_name}".
 
 -- ROL --
-Eres un asistente que EXCLUSIVAMENTE responde preguntas sobre la organización y evaluación de la asignatura "{subject_name}", impartida en la Escuela Técnica Superior de Ingeniería de Sistemas Informáticos (ETSISI) de la Universidad Politécnica de Madrid (UPM). Tu tarea es ayudar a los usuarios a encontrar información sobre aspectos administrativos, fechas, criterios de evaluación y a calcular notas utilizando datos adicionales.
+Eres JosAI, un asistente que EXCLUSIVAMENTE responde preguntas sobre la organización y evaluación de la asignatura "{subject_name}", impartida en la Escuela Técnica Superior de Ingeniería de Sistemas Informáticos (ETSISI) de la Universidad Politécnica de Madrid (UPM). Tu tarea es ayudar a los usuarios a encontrar información sobre aspectos administrativos, fechas, criterios de evaluación y a calcular notas utilizando datos adicionales.
 
 -- ASPECTOS IMPORTANTES --
 1. Tipos de evaluación: La asignatura tiene dos tipos de Evaluación Ordinaria (el cual los estudiantes pueden elegir) y una tipo de Evaluación Extraordinaria.
@@ -210,7 +237,7 @@ Al responder preguntas sobre aprobar o calcular notas finales:
 2. No añadas información externa ni supongas datos no explícitos.
 3. Si no tienes suficiente información, responde: "Lo siento, no tengo información suficiente para responder a tu pregunta. ¿Hay algo más en lo que pueda ayudarte?"
 4. Responde siempre en el mismo idioma en el que se te pregunte.
-5. No comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones que la información proviene de DATA EVALUACIÓN o DATA EXTRA.
+5. NUNCA comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones que la información proviene de DATA EVALUACIÓN o DATA EXTRA.
 
 -- CASOS DE EQUIVALENCIA --
 Para evitar confusiones, ten en cuenta las siguientes equivalencias en las preguntas de los usuarios:
@@ -248,86 +275,6 @@ EVALUACIÓN GLOBAL:
 EVALUACIÓN EXTRAORDINARIA:
 {activities_e}
 
--- EJEMPLOS --
-
-- Si el usuario pregunta: Si me presento al examen global y lo suspendo, ¿pierdo la nota del laboratorio?
-
-Tú debes revisar la información en "DATA EXTRA" y "DATA EVALUACIÓN" puesto que la pregunta del usuario está relacionada con notas y exámenes. Asimismo, debes darte cuenta que como está preguntando acerca del examen global, debes interpretarlo como examen final. Luego, debes comprobar si la pregunta hace mención explícita o implícita a una evaluación específica o no. Por último, debes darte cuenta que como está preguntando acerca del laboratorio, debes interpretarlo como prácticas.
-
-En este caso, el usuario no hace mención a la evaluación, por lo que debes considerar todas las evaluaciones en las que se encuentra el examen final.
-
-Por lo tanto, debes responder basandote en esa deducción y en la información de DATA EXTRA y DATA EVALUACIÓN.
-
-- Si el usuario pregunta: "¿Cuál es el peso de la nota del laboratorio y de la teoría en la nota final?"
-  
-Tú debes revisar la información en "DATA EXTRA" y "DATA EVALUACIÓN" puesto que la pregunta del usuario está relacionada con cálculos y notas específicas. Asimismo, debes considerar si la pregunta se refiere a la Evaluación Progresiva, Evaluación Global o Evaluación Extraordinaria. Por último, debes darte cuenta que como está preguntando acerca del laboratorio, debes interpretarlo como prácticas.
-
-Entonces, si se tiene en DATA EXTRA lo siguiente:
-"-- DATA EXTRA --
-
-EVALUACIÓN PROGRESIVA:
-- Examen Parcial 1 (0.14): Nota mínima 0 (Fecha: Semana 7)
-- Examen Parcial 2 (0.14): Nota mínima 0 (Fecha: Semana 15)
-- Examen Final (0.42): Nota mínima 4 (Fecha: Semana 17)
-- Práctica 1 (0.12): Nota mínima 0 (Fecha: Semana 6)
-- Práctica 2 (0.18): Nota mínima 0 (Fecha: Semana 17)
-
-EVALUACIÓN GLOBAL:
-- Examen Final (0.42): Nota mínima 4 (Fecha: Semana 17)
-- Práctica 2 (0.18): Nota mínima 0 (Fecha: Semana 17)
-- Actividad No Recuperable (0.40): Nota mínima 0 (Fecha: Semana 17)
-
-EVALUACIÓN EXTRAORDINARIA:
-- Examen Teórico (0.70): Nota mínima 5 (Fecha: Por definir)
-- Examen Práctico (0.30): Nota mínima 5 (Fecha: Por definir)"
-
-Debes obtener el peso del laboratorio (prácticas) y de la teoría en la nota final de la Evaluación Progresiva, Global y Extraordinaria, y responder en base a esos datos. Basandote en DATA EXTRA y DATA EVALUACIÓN.
-
-En este caso, en la Evaluación Progresiva, el peso de las prácticas, Práctica 1 y Práctica 2, es de 0.12 y 0.18 respectivamente, mientras que el peso de la nota de la teoría, Examen Parcial 1, Examen Parcial 2 y Examen Final, es de 0.14, 0.14 y 0.42 respectivamente. Por lo tanto, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final de la Evaluación Progresiva es de 0.30 y 0.70 respectivamente.
-
-En la Evaluación Global, el peso de las prácticas, Práctica 2, es de 0.18, mientras que el peso de la nota de la teoría, Examen Final, es de 0.42. Por lo tanto, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final de la Evaluación Global es de 0.18 y 0.42 respectivamente. Aunque en este caso, también se debe considerar que existe un conjunto de actividades, "Actividad No Recuperable", que corresponde a la parte teórico-práctica evaluada durante el semestre dentro del aula y que no tiene carácter recuperable, y cuyo peso es de 0.40.
-
-En la Evaluación Extraordinaria, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final es de 0.30 y 0.70 respectivamente.
-
-Por lo tanto, debes responder: "En la Evaluación Progresiva, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final es de 30% y 70% respectivamente. 
-En la Evaluación Global, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final es de 18% y 42% respectivamente. Además, existe un conjunto de actividades, 'Actividad No Recuperable', que corresponde a la parte teórico-práctica evaluada durante el semestre dentro del aula y que no tiene carácter recuperable, y cuyo peso es de 40%.
-En la Evaluación Extraordinaria, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final es de 30% y 70% respectivamente."
-
-- Si el usuario pregunta: "Tengo un 5 en teoría y un 8 en laboratorio en evaluación progresiva. ¿He aprobado la asignatura?"
-
-Primero, debes extraer las condiciones de aprobado de DATA EVALUACIÓN. En este caso, para la Evaluación Progresiva, se encuentra "PARA APROBAR LA ASIGNATURA EN EVALUACIÓN ORDINARIA, un estudiante deberá cumplir las siguientes condiciones: LA NOTA DEL EXAMEN FINAL (EF) DEBE SER MAYOR O IGUAL A 4. LA NOTA DE CADA BLOQUE (NT, NP) Y LA NOTA FINAL (NF) DEBE SER MAYOR O IGUAL A 5."
-
-Entonces, si se tiene en DATA EXTRA lo siguiente:
-"-- DATA EXTRA --
-
-EVALUACIÓN PROGRESIVA:
-- Examen Parcial 1 (0.14): Nota mínima 0 (Fecha: Semana 7)
-- Examen Parcial 2 (0.14): Nota mínima 0 (Fecha: Semana 15)
-- Examen Final (0.42): Nota mínima 4 (Fecha: Semana 17)
-- Práctica 1 (0.12): Nota mínima 0 (Fecha: Semana 6)
-- Práctica 2 (0.18): Nota mínima 0 (Fecha: Semana 17)
-
-EVALUACIÓN GLOBAL:
-- Examen Final (0.42): Nota mínima 4 (Fecha: Semana 17)
-- Práctica 2 (0.18): Nota mínima 0 (Fecha: Semana 17)
-- Actividad No Recuperable (0.40): Nota mínima 0 (Fecha: Semana 17)
-
-EVALUACIÓN EXTRAORDINARIA:
-- Examen Teórico (0.70): Nota mínima 5 (Fecha: Por definir)
-- Examen Práctico (0.30): Nota mínima 5 (Fecha: Por definir)"
-
-En este caso, el usuario indica que tiene 5 en teoría (NT) y 8 en laboratorio (NP) en evaluación progresiva. Las notas de bloques cumplen con el mínimo de 5, pero falta verificar si el examen final (EF) cumple su condición mínima de 4.
-
-Por lo tanto, debes pedir esta información adicional antes de poder dar una respuesta definitiva.
-
-Debes responder: "Con un 5 en teoría y un 8 en laboratorio (prácticas), estás cumpliendo la condición de nota mínima en cada bloque. Sin embargo, necesito saber tu nota específica en el examen final para confirmar si has aprobado la asignatura.
-Según la normativa, para aprobar en evaluación ordinaria, 'LA NOTA DEL EXAMEN FINAL (EF) DEBE SER MAYOR O IGUAL A 4'.
-¿Podrías indicarme cuál fue tu calificación en el examen final?"
-
-Si el usuario responde "En el examen final saqué un 3.8", entonces debes responder:
-"Lamentablemente, aunque tienes un 5 en teoría y un 8 en prácticas, no has aprobado la asignatura en evaluación progresiva. Esto se debe a que tu nota en el examen final (3.8) está por debajo del mínimo requerido de 4.0 que especifica la normativa.
-Te recomendaría prepararte para la evaluación extraordinaria, donde necesitarás obtener al menos un 5 tanto en el examen teórico como en el práctico."
-
                 """
             
             else:
@@ -349,7 +296,7 @@ Te recomendaría prepararte para la evaluación extraordinaria, donde necesitar�
                 En este chatbot estamos utilizando un sistema RAG (Retrieval Augmented Generation), lo que significa que combina información recuperada de documentos oficiales, que en este caso son los criterios de evaluación (sección DATA EVALUACIÓN) con datos estructurados (sección DATA EXTRA) para generar respuestas precisas acerca de la organización y evaluación de la asignatura "{subject_name}". También hay una sección llamada PREGUNTAS FRECUENTES, el cual contiene preguntas y respuestas que pueden ser útil para responder las cuestiones de los usuarios.
                 
                 -- ROL --
-                Eres un asistente que EXCLUSIVAMENTE responde preguntas sobre la organización y evaluación de la asignatura "{subject_name}", impartida en la Escuela Técnica Superior de Ingeniería de Sistemas Informáticos (ETSISI) de la Universidad Politécnica de Madrid (UPM). Tu tarea es ayudar a los usuarios a encontrar información sobre aspectos administrativos, fechas, criterios de evaluación y a calcular notas utilizando datos adicionales.
+                Eres JosAI, un asistente que EXCLUSIVAMENTE responde preguntas sobre la organización y evaluación de la asignatura "{subject_name}", impartida en la Escuela Técnica Superior de Ingeniería de Sistemas Informáticos (ETSISI) de la Universidad Politécnica de Madrid (UPM). Tu tarea es ayudar a los usuarios a encontrar información sobre aspectos administrativos, fechas, criterios de evaluación y a calcular notas utilizando datos adicionales.
                 
                 -- ASPECTOS IMPORTANTES --
                 1. Tipos de evaluación: La asignatura tiene dos tipos de Evaluación Ordinaria (el cual los estudiantes pueden elegir) y una tipo de Evaluación Extraordinaria.
@@ -394,7 +341,7 @@ Te recomendaría prepararte para la evaluación extraordinaria, donde necesitar�
                 2. No añadas información externa ni supongas datos no explícitos.
                 3. Si no tienes suficiente información, responde: "Lo siento, no tengo información suficiente para responder a tu pregunta. ¿Hay algo más en lo que pueda ayudarte?"
                 4. Responde siempre en el mismo idioma en el que se te pregunte.
-                5. No comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones que la información proviene de DATA EVALUACIÓN o DATA EXTRA.
+                5. NUNCA comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones que la información proviene de DATA EVALUACIÓN o DATA EXTRA.
                 
                 -- CASOS DE EQUIVALENCIA --
                 Para evitar confusiones, ten en cuenta las siguientes equivalencias en las preguntas de los usuarios:
@@ -443,103 +390,105 @@ Te recomendaría prepararte para la evaluación extraordinaria, donde necesitar�
                 
                 Pregunta 3: {third_question_faq}
                 Respuesta 3: {third_answer_faq}
-                
-                -- EJEMPLOS --
-                
-                - Si el usuario pregunta: Si me presento al examen global y lo suspendo, ¿pierdo la nota del laboratorio?
-                
-                Tú debes revisar la información en "DATA EXTRA" y "DATA EVALUACIÓN" puesto que la pregunta del usuario está relacionada con notas y exámenes. Asimismo, debes darte cuenta que como está preguntando acerca del examen global, debes interpretarlo como examen final. Luego, debes comprobar si la pregunta hace mención explícita o implícita a una evaluación específica o no. Por último, debes darte cuenta que como está preguntando acerca del laboratorio, debes interpretarlo como prácticas.
-
-                En este caso, el usuario no hace mención a la evaluación, por lo que debes considerar todas las evaluaciones en las que se encuentra el examen final.
-
-                Por lo tanto, debes responder basandote en esa deducción y en la información de DATA EXTRA y DATA EVALUACIÓN.
-
-                - Si el usuario pregunta: "¿Cuál es el peso de la nota del laboratorio y de la teoría en la nota final?"
-  
-                Tú debes revisar la información en "DATA EXTRA" y "DATA EVALUACIÓN" puesto que la pregunta del usuario está relacionada con cálculos y notas específicas. Asimismo, debes considerar si la pregunta se refiere a la Evaluación Progresiva, Evaluación Global o Evaluación Extraordinaria. Por último, debes darte cuenta que como está preguntando acerca del laboratorio, debes interpretarlo como prácticas.
-
-                Entonces, si se tiene en DATA EXTRA lo siguiente:
-                "-- DATA EXTRA --
-
-                EVALUACIÓN PROGRESIVA:
-                - Examen Parcial 1 (0.14): Nota mínima 0 (Fecha: Semana 7)
-                - Examen Parcial 2 (0.14): Nota mínima 0 (Fecha: Semana 15)
-                - Examen Final (0.42): Nota mínima 4 (Fecha: Semana 17)
-                - Práctica 1 (0.12): Nota mínima 0 (Fecha: Semana 6)
-                - Práctica 2 (0.18): Nota mínima 0 (Fecha: Semana 17)
-
-                EVALUACIÓN GLOBAL:
-                - Examen Final (0.42): Nota mínima 4 (Fecha: Semana 17)
-                - Práctica 2 (0.18): Nota mínima 0 (Fecha: Semana 17)
-                - Actividad No Recuperable (0.40): Nota mínima 0 (Fecha: Semana 17)
-
-                EVALUACIÓN EXTRAORDINARIA:
-                - Examen Teórico (0.70): Nota mínima 5 (Fecha: Por definir)
-                - Examen Práctico (0.30): Nota mínima 5 (Fecha: Por definir)"
-
-                Debes obtener el peso del laboratorio (prácticas) y de la teoría en la nota final de la Evaluación Progresiva, Global y Extraordinaria, y responder en base a esos datos. Basandote en DATA EXTRA y DATA EVALUACIÓN.
-
-                En este caso, en la Evaluación Progresiva, el peso de las prácticas, Práctica 1 y Práctica 2, es de 0.12 y 0.18 respectivamente, mientras que el peso de la nota de la teoría, Examen Parcial 1, Examen Parcial 2 y Examen Final, es de 0.14, 0.14 y 0.42 respectivamente. Por lo tanto, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final de la Evaluación Progresiva es de 0.30 y 0.70 respectivamente.
-
-                En la Evaluación Global, el peso de las prácticas, Práctica 2, es de 0.18, mientras que el peso de la nota de la teoría, Examen Final, es de 0.42. Por lo tanto, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final de la Evaluación Global es de 0.18 y 0.42 respectivamente. Aunque en este caso, también se debe considerar que existe un conjunto de actividades, "Actividad No Recuperable", que corresponde a la parte teórico-práctica evaluada durante el semestre dentro del aula y que no tiene carácter recuperable, y cuyo peso es de 0.40.
-
-                En la Evaluación Extraordinaria, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final es de 0.30 y 0.70 respectivamente.
-
-                Por lo tanto, debes responder: "En la Evaluación Progresiva, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final es de 30% y 70% respectivamente. 
-                En la Evaluación Global, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final es de 18% y 42% respectivamente. Además, existe un conjunto de actividades, 'Actividad No Recuperable', que corresponde a la parte teórico-práctica evaluada durante el semestre dentro del aula y que no tiene carácter recuperable, y cuyo peso es de 40%.
-                En la Evaluación Extraordinaria, el peso de la nota del laboratorio (prácticas) y de la teoría en la nota final es de 30% y 70% respectivamente."
-
-                - Si el usuario pregunta: "Tengo un 5 en teoría y un 8 en laboratorio en evaluación progresiva. ¿He aprobado la asignatura?"
-
-                Primero, debes extraer las condiciones de aprobado de DATA EVALUACIÓN. En este caso, para la Evaluación Progresiva, se encuentra "PARA APROBAR LA ASIGNATURA EN EVALUACIÓN ORDINARIA, un estudiante deberá cumplir las siguientes condiciones: LA NOTA DEL EXAMEN FINAL (EF) DEBE SER MAYOR O IGUAL A 4. LA NOTA DE CADA BLOQUE (NT, NP) Y LA NOTA FINAL (NF) DEBE SER MAYOR O IGUAL A 5."
-
-                Entonces, si se tiene en DATA EXTRA lo siguiente:
-                "-- DATA EXTRA --
-
-                EVALUACIÓN PROGRESIVA:
-                - Examen Parcial 1 (0.14): Nota mínima 0 (Fecha: Semana 7)
-                - Examen Parcial 2 (0.14): Nota mínima 0 (Fecha: Semana 15)
-                - Examen Final (0.42): Nota mínima 4 (Fecha: Semana 17)
-                - Práctica 1 (0.12): Nota mínima 0 (Fecha: Semana 6)
-                - Práctica 2 (0.18): Nota mínima 0 (Fecha: Semana 17)
-
-                EVALUACIÓN GLOBAL:
-                - Examen Final (0.42): Nota mínima 4 (Fecha: Semana 17)
-                - Práctica 2 (0.18): Nota mínima 0 (Fecha: Semana 17)
-                - Actividad No Recuperable (0.40): Nota mínima 0 (Fecha: Semana 17)
-
-                EVALUACIÓN EXTRAORDINARIA:
-                - Examen Teórico (0.70): Nota mínima 5 (Fecha: Por definir)
-                - Examen Práctico (0.30): Nota mínima 5 (Fecha: Por definir)"
-
-                En este caso, el usuario indica que tiene 5 en teoría (NT) y 8 en laboratorio (NP) en evaluación progresiva. Las notas de bloques cumplen con el mínimo de 5, pero falta verificar si el examen final (EF) cumple su condición mínima de 4.
-
-                Por lo tanto, debes pedir esta información adicional antes de poder dar una respuesta definitiva.
-
-                Debes responder: "Con un 5 en teoría y un 8 en laboratorio (prácticas), estás cumpliendo la condición de nota mínima en cada bloque. Sin embargo, necesito saber tu nota específica en el examen final para confirmar si has aprobado la asignatura.
-                Según la normativa, para aprobar en evaluación ordinaria, 'LA NOTA DEL EXAMEN FINAL (EF) DEBE SER MAYOR O IGUAL A 4'.
-                ¿Podrías indicarme cuál fue tu calificación en el examen final?"
-
-                Si el usuario responde "En el examen final saqué un 3.8", entonces debes responder:
-                "Lamentablemente, aunque tienes un 5 en teoría y un 8 en prácticas, no has aprobado la asignatura en evaluación progresiva. Esto se debe a que tu nota en el examen final (3.8) está por debajo del mínimo requerido de 4.0 que especifica la normativa.
-                Te recomendaría prepararte para la evaluación extraordinaria, donde necesitarás obtener al menos un 5 tanto en el examen teórico como en el práctico."
                 """
-  
-            print("AQUI ESTA EL SYSTEM MESSAGE")
-            print(system_message)
-            
+                            
             if old_messages:
-                chat_history = old_messages + recent_messages
                 
-            else:
-                chat_history = recent_messages
+                formatted_old_messages = f"-- Resumen(es) de la conversación anterior más antigua(s) --\nEstán ordenados de más antiguo a más reciente\n\n"
+                for i, old_message in enumerate(old_messages):
+                    old_message_clean = old_message.content.replace("-- Resumen de la conversación anterior más reciente --\n", "")
+                    formatted_old_messages += f"{i+1}. Resumen:{old_message_clean}\n"
+                
+                system_message = f"{system_message}\n\n{formatted_old_messages}"
+                
+            chat_history = recent_messages
 
             prompt = [SystemMessage(content=system_message)] + chat_history
-            print("AQUI ESTA EL PROMPT:\n")
+            print("==== EL PROMPT DE QUERY TYPE B ES ====\n")
             print(prompt)
             response = self.llm.invoke(prompt)
-            print("EL RESPONSE DE QUERY TYPE B ES: ")
+            print("\n====EL RESPONSE DE QUERY TYPE B ES====\n")
             print(response)
             return response
         except Exception as e:
-            raise Exception(f"Error en query_type_b: {str(e)}")
+            raise Exception(f"Error in query_type_b: {str(e)}")
+        
+    def query_type_c(self, old_messages, recent_messages, subject_id, user_query_temp):
+        try:
+            subject_name = self.supabase_client.get_subject_name_by_id(subject_id)
+            
+            vstore = self.chromadb_client.get_collection(subject_id)
+            faq = vstore.similarity_search(query=user_query_temp, k=3, filter={"document_type": "faq"})
+            
+            if not faq:
+                system_message = f"""
+                    Eres JosAI, un asistente que EXCLUSIVAMENTE responde preguntas sobre la organización y evaluación de la asignatura "{subject_name}", impartida en la Escuela Técnica Superior de Ingeniería de Sistemas Informáticos (ETSISI) de la Universidad Politécnica de Madrid (UPM). 
+                    
+                    Basándote en el siguiente historial de chat y la última pregunta del usuario, responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
+                    
+                    -- RESTRICCIONES --
+                    
+                    1. NO debes contestar a preguntas que no estén relacionadas con este contexto o que no tengan relación con el historial de chat.
+                    2. NUNCA inventes nada que no sepas o que no esté en el contexto.
+                    3. NO menciones tus pensamientos internos ni notas personales.
+                    """
+            else:
+                faq_1 = faq[0].page_content
+                faq_2 = faq[1].page_content
+                faq_3 = faq[2].page_content
+                        
+                first_question_faq = faq_1.split("Respuesta:")[0].replace("Pregunta:", "").strip()
+                first_answer_faq = faq_1.split("Respuesta:")[1].strip()
+            
+                second_question_faq = faq_2.split("Respuesta:")[0].replace("Pregunta:", "").strip()
+                second_answer_faq = faq_2.split("Respuesta:")[1].strip()
+            
+                third_question_faq = faq_3.split("Respuesta:")[0].replace("Pregunta:", "").strip()
+                third_answer_faq = faq_3.split("Respuesta:")[1].strip()
+                
+                system_message = f"""
+                Eres JosAI, un asistente que EXCLUSIVAMENTE responde preguntas sobre la organización y evaluación de la asignatura "{subject_name}", impartida en la Escuela Técnica Superior de Ingeniería de Sistemas Informáticos (ETSISI) de la Universidad Politécnica de Madrid (UPM). 
+                    
+                Basándote en el siguiente historial de chat y la última pregunta del usuario (además de tener en cuenta las Preguntas Frecuentes por si hace falta), responde a esta última pregunta o cuestión del usuario de manera clara y concisa.
+                
+                -- PREGUNTAS FRECUENTES --
+                
+                Pregunta 1: {first_question_faq}
+                Respuesta 1: {first_answer_faq}
+                
+                Pregunta 2: {second_question_faq}
+                Respuesta 2: {second_answer_faq}
+                
+                Pregunta 3: {third_question_faq}
+                Respuesta 3: {third_answer_faq}
+                    
+                -- RESTRICCIONES --
+                    
+                1. NO debes contestar a preguntas que no estén relacionadas con este contexto o que no tengan relación con el historial de chat.
+                2. NUNCA inventes nada que no sepas o que no esté en el contexto.
+                3. NO menciones tus pensamientos internos ni notas personales.
+                4. NO comentes sobre el funcionamiento interno del sistema. Es decir, no menciones por ejemplo que la información proviene de la sección PREGUNTAS FRECUENTES.
+                """
+            
+            if old_messages:
+                
+                formatted_old_messages = f"-- Resumen(es) de la conversación anterior más antigua(s) --\nEstán ordenados de más antiguo a más reciente\n\n"
+                for i, old_message in enumerate(old_messages):
+                    old_message_clean = old_message.content.replace("-- Resumen de la conversación anterior más reciente --\n", "")
+                    formatted_old_messages += f"{i+1}. Resumen:{old_message_clean}\n"
+                
+                system_message = f"{system_message}\n\n{formatted_old_messages}"
+            
+            chat_history = recent_messages
+            
+            messages = [SystemMessage(content=system_message)] + chat_history
+            print("==== EL PROMPT DE QUERY TYPE C ES ====\n")
+            print(messages)
+            response = self.llm.invoke(messages)
+            print("\n==== EL RESPONSE DE QUERY TYPE C ES ====\n")
+            print(response)
+            
+            return response
+
+        except Exception as e:
+            raise Exception(f"Error in query_type_c: {str(e)}")

@@ -49,17 +49,9 @@ class QueryClassifierService:
         
     def classify_query(self, user_query: str) -> str:
         prompt = self.classification_prompt.invoke({"input": user_query})
-        print("EL PROMPT ES: " )
-        print(prompt)
-        
-        #response = self.llm.with_structured_output(QueryClassification).invoke(prompt)
-        #print(response)
-        #return response.model_dump().get("category")
-        
+
         response_text = self.llm.invoke(prompt).content
-        print("RESPUESTA: ")
-        print(response_text)
-        
+
         clean_response = re.sub(r'<think>.*?</think>', '', response_text, flags=re.DOTALL)
         
         # Extraemos la categoría usando una expresión regular (se espera que la respuesta contenga A, BP, BG, BE, BT o C)

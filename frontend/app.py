@@ -128,7 +128,7 @@ if 'guides' not in st.session_state:
     st.session_state.guides = get_all_teaching_guides()
 
 # Título principal
-st.title("🤖 JosAI - Asistente de Guías Docentes")
+st.title("🤖 JosAI - Asistente de Información sobre las asignaturas de la ETSISI")
 
 # Sidebar para subir guías y seleccionarlas
 with st.sidebar:
@@ -212,7 +212,8 @@ with st.sidebar:
 # Área principal de chat
 if st.session_state.selected_guide:
     # Mostrar el nombre de la guía seleccionada
-    st.subheader(f"Chat sobre: {guide_options.get(st.session_state.selected_guide, 'Guía seleccionada')}")
+    subject_name = guide_options.get(st.session_state.selected_guide, "Guía seleccionada")
+    st.subheader(f"Chat sobre: **{subject_name.capitalize()}**")
     
     # Mostrar mensajes anteriores
     for message in st.session_state.messages:

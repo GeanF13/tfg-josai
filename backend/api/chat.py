@@ -20,15 +20,18 @@ async def chat(request: ChatRequest):
         thread_id = request.thread_id if request.thread_id else f"thread_{uuid.uuid4()}"
         config = {"configurable": {"thread_id": thread_id}}
         
+        print("EL THREAD ID ES: ", thread_id)
+        
         # Convertir la consulta del usuario en un mensaje
         input_message = HumanMessage(content=request.user_query)
         
         # Buscar si hay una conversación previa guardada con este thread_id
         previous_state = memory.get(config)
+        previous_state = chat_graph.get_state(config=config)
         
         if previous_state:
             # Si hay una conversación previa, añadir el nuevo mensaje a los mensajes recientes
-            recent_messages = previous_state.get("recent_messages", [])
+            recent_messages = previous_state.values.get("recent_messages", [])
             
             # Añadir el nuevo mensaje
             recent_messages.append(input_message)
@@ -39,8 +42,14 @@ async def chat(request: ChatRequest):
             # Si es la primera vez, iniciar una nueva conversación
             output = chat_graph.invoke({"recent_messages": [input_message], "subject_id": request.subject_id}, config)
         
+        print("La lista de RECENT MESSAGES antes de invocar el grafo es: ")
+        if previous_state:
+            print(recent_messages)
+                
         # Obtener la última respuesta
         if output["recent_messages"]:
+            print("La lista de RECENT MESSAGES después de invocar el grafo es: ")
+            print(output["recent_messages"])
             # Intentar obtener el último mensaje del asistente
             ai_messages = [m for m in output["recent_messages"] if isinstance(m, AIMessage)]
             if ai_messages:

@@ -1,4 +1,4 @@
-from services.node_service import contextualize_query, classify_query, generate_response, should_summarize, summarize_recent_messages, update_old_messages, should_update_old_messages, ChatState
+from services.nodes_service import contextualize_query, classify_query, generate_response, should_summarize, summarize_recent_messages, update_old_messages, should_update_old_messages, ChatState
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
