@@ -1,7 +1,6 @@
 import chromadb
 import os
 from dotenv import load_dotenv
-from persistence.embedding_wrapper import EmbeddingFunctionWrapper
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 
