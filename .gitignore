@@ -34,6 +34,7 @@ var/
 # Archivos de configuración local
 *.env
 .env
+.env-example
 
 # Archivos de configuración de editores y entornos de desarrollo
 .vscode/
