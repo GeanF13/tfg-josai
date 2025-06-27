@@ -1,9 +1,9 @@
 [theme]
 base = "dark"
-primaryColor = "#3C3940"  # Azul
-backgroundColor = "#F2F2F2"  # Crema suave
-secondaryBackgroundColor = "#1B72BF"  # Azul claro
-textColor = "black"
+primaryColor = "#3C3940"  # Mover el azul aquí como color primario
+backgroundColor = "#F2F2F2"  # Mantener el crema suave
+secondaryBackgroundColor = "#1B72BF"  # Gris muy claro para elementos secundarios
+textColor = "black"  # Gris oscuro en lugar de negro puro para mejor legibilidad
 font = "sans serif"
 
 [client]

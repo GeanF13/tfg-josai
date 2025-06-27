@@ -9,21 +9,9 @@ from services.utils import get_role
 from langchain_deepseek import ChatDeepSeek
 import os
 
-#llm = ChatOllama(
-#    model = "deepseek-r1:14b",
-#    temperature = 0
-#)
-
-llm = ChatDeepSeek(
-    model = "deepseek-reasoner",
-    temperature = 0,
-    api_key=os.getenv('DEEPSEEK_API_KEY')
-)
-
-llm_2 = ChatDeepSeek(
-    model = "deepseek-chat",
-    temperature = 0,
-    api_key=os.getenv('DEEPSEEK_API_KEY')
+llm = ChatOllama(
+    model = "deepseek-r1:14b",
+    temperature = 0
 )
 
 class ChatState(MessagesState):

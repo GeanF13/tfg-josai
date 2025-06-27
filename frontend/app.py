@@ -25,6 +25,35 @@ st.set_page_config(
     }
 )
 
+# CSS personalizado para sobrescribir el color de texto resaltado
+st.markdown("""
+<style>
+/* Sobrescribir el color de fondo de código inline y texto resaltado */
+code {
+    background-color: #E8E8E8 !important;
+    color: #333333 !important;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* Sobrescribir elementos con background secundario problemático */
+.stMarkdown code {
+    background-color: #F0F0F0 !important;
+    color: #2C2C2C !important;
+}
+
+/* Mantener el sidebar con tu color azul */
+.css-1d391kg {
+    background-color: #1B72BF !important;
+}
+
+/* Asegurar que el texto del sidebar sea legible */
+.css-1d391kg .stMarkdown {
+    color: white !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Función para convertir imagen a base64
 def get_image_base64(image_path):
     if not os.path.isfile(image_path):

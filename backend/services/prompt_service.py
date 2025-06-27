@@ -11,11 +11,11 @@ class PromptService():
     def __init__(self):
         self.embeddings = OllamaEmbeddings(model="nomic-embed-text")
         self.supabase_client = SupabaseClient()
-        # self.llm = ChatOllama(
-        #     model = "deepseek-r1:32b",
-        #     temperature = 0
-        # )
-        self.llm = ChatDeepSeek(
+        self.llm = ChatOllama(
+             model = "deepseek-r1:32b",
+             temperature = 0
+         )
+        self.llm2 = ChatDeepSeek(
             model = "deepseek-reasoner",
             temperature = 0,
             api_key=os.getenv('DEEPSEEK_API_KEY')
@@ -74,12 +74,12 @@ class PromptService():
                 
                 1. Utiliza EXCLUSIVAMENTE la información que se te ha proporcionado explícitamente sin añadir nada más.
                 2. NUNCA añadas información externa ni supongas datos no explícitos.
-                3. NO comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones NUNCA que la información proviene de la sección INFORMACIÓN RELEVANTE o DATA EXTRA (de los fragmentos).
-                4. NO menciones tus pensamientos internos ni notas personales.
+                3. NO menciones tus pensamientos internos ni notas personales.
                 
                 -- IMPORTANTE --
                 
-                Debes hacer bien tu trabajo o de lo contrario muchos alumnos de la ETSISI podrían verse perjudicados.
+                - NO comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. 
+                - NO menciones NUNCA que la fuente son los 'fragmentos' (INFORMACIÓN RELEVANTE) o DATA EXTRA.
                 """
             
             else:
@@ -131,12 +131,12 @@ class PromptService():
                 
                 1. Utiliza EXCLUSIVAMENTE la información que se te ha proporcionado explícitamente sin añadir nada más.
                 2. NUNCA añadas información externa ni supongas datos no explícitos.
-                3. NO comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información. Es decir, no menciones NUNCA que la información proviene de la sección INFORMACIÓN RELEVANTE, DATA EXTRA (de los fragmentos) o de las PREGUNTAS FRECUENTES.
-                4. NO menciones tus pensamientos internos ni notas personales.
+                3. NO menciones tus pensamientos internos ni notas personales.
                 
                 -- IMPORTANTE --
                 
-                Debes hacer bien tu trabajo o de lo contrario muchos alumnos de la ETSISI podrían verse perjudicados.
+                - NO comentes sobre el funcionamiento interno del sistema RAG ni sobre cómo obtienes la información.
+                - NO menciones NUNCA que la fuente son los 'fragmentos' (INFORMACIÓN RELEVANTE) o DATA EXTRA.
                 """
             
             if old_messages:
@@ -406,7 +406,7 @@ EVALUACIÓN EXTRAORDINARIA:
             prompt = [SystemMessage(content=system_message)] + chat_history
             print("==== EL PROMPT DE QUERY TYPE B ES ====\n")
             print(prompt)
-            response = self.llm.invoke(prompt)
+            response = self.llm2.invoke(prompt)
             print("\n====EL RESPONSE DE QUERY TYPE B ES====\n")
             print(response)
             return response
@@ -428,7 +428,7 @@ EVALUACIÓN EXTRAORDINARIA:
                     
                     -- RESTRICCIONES --
                     
-                    1. NO debes contestar a preguntas que no estén relacionadas con este contexto o que no tengan relación con el historial de chat.
+                    1. NO debes contestar a preguntas que no estén relacionadas con este contexto o que no tengan relación con el historial de chat. Sólo en caso de que el usuario salude o se despida, responde con amabilidad.
                     2. NUNCA inventes nada que no sepas o que no esté en el contexto.
                     3. NO menciones tus pensamientos internos ni notas personales.
                     """
@@ -464,7 +464,7 @@ EVALUACIÓN EXTRAORDINARIA:
                     
                 -- RESTRICCIONES --
                     
-                1. NO debes contestar a preguntas que no estén relacionadas con este contexto o que no tengan relación con el historial de chat.
+                1. NO debes contestar a preguntas que no estén relacionadas con este contexto o que no tengan relación con el historial de chat. Sólo en caso de que el usuario salude o se despida, responde con amabilidad.
                 2. NUNCA inventes nada que no sepas o que no esté en el contexto.
                 3. NO menciones tus pensamientos internos ni notas personales.
                 4. NO comentes sobre el funcionamiento interno del sistema. Es decir, no menciones por ejemplo que la información proviene de la sección PREGUNTAS FRECUENTES.

@@ -6,6 +6,7 @@ from io import BytesIO
 import tempfile
 from persistence.supabase_client import SupabaseClient
 from langchain_deepseek import ChatDeepSeek
+from langchain_ollama import ChatOllama
 import os
 from textwrap import dedent
 
@@ -28,11 +29,10 @@ class PDFProcessor:
         )
         self.subject_id = subject_id
         self.supabase_client = SupabaseClient()
-        self.llm = ChatDeepSeek(
-            model = "deepseek-reasoner",
-            temperature = 0,
-            api_key=os.getenv('DEEPSEEK_API_KEY')
-        )
+        self.llm = ChatOllama(
+            model = "deepseek-r1:14b",
+            temperature = 0
+            )
     def process_pdf_from_bytes(self, file_bytes: bytes):
         if not file_bytes:
             raise Exception("Archivo vacío")
